@@ -47,7 +47,7 @@ public class QueryService {
         .flatMapMany(connection ->
             Flux.from(connection.createStatement("SELECT * FROM invoice_transaction.account_payable WHERE account_payable_id = $1")
                 .bind("$1", id)
-                //.fetchSize(fetchSize)
+                .fetchSize(fetchSize)
                 .execute())
                 .flatMap(result -> result.map((row, rowData) -> AccountPayableEntity.builder()
                     .accountPayableId(row.get("account_payable_id", String.class))
@@ -78,7 +78,7 @@ public class QueryService {
         .flatMapMany(connection ->
             Flux.from(connection.createStatement("SELECT * FROM invoice_transaction.account_receivable WHERE account_receivable_id = $1")
                 .bind("$1", id)
-                //.fetchSize(fetchSize)
+                .fetchSize(fetchSize)
                 .execute())
                 .flatMap(result -> result.map((row, rowData) -> AccountReceivableEntity.builder()
                     .accountReceivableId(row.get("account_receivable_id", String.class))

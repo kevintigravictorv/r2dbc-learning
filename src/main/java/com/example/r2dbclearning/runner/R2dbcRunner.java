@@ -54,11 +54,13 @@ public class R2dbcRunner implements CommandLineRunner {
 
     Flux<AccountBase> payableFlux = queryService.findAccountPayableByParametersAndStatus(payload, invoiceStatus)
         .publishOn(Schedulers.boundedElastic())
+        .limitRate(fetchSize)
         .map(accountPayableEntity -> AccountBaseTransformer.transformInvoiceBaseEntityToModel(accountPayableEntity,
             accountPayableEntity.getAccountPayableId(), TransactionType.ACCOUNT_PAYABLE.name()));
 
     Flux<AccountBase> receivableFlux = queryService.findAccountReceivableByParametersAndStatus(payload, invoiceStatus)
         .publishOn(Schedulers.boundedElastic())
+        .limitRate(fetchSize)
         .map(accountReceivableEntity -> AccountBaseTransformer.transformInvoiceBaseEntityToModel(accountReceivableEntity,
             accountReceivableEntity.getAccountReceivableId(), TransactionType.ACCOUNT_RECEIVABLE.name()));
 
@@ -81,7 +83,7 @@ public class R2dbcRunner implements CommandLineRunner {
     AtomicReference<BigDecimal> totalAmount = new AtomicReference<>(BigDecimal.ZERO);
     Flux<PayableStatementItemEntity> payableStatementItemEntityFlux = payableFlux.concatWith(receivableFlux)
         .publishOn(Schedulers.boundedElastic())
-        //.limitRate(fetchSize)
+        .limitRate(fetchSize)
         .map(accountBase -> {
           totalAmount.set(totalAmount.get().add(accountBase.getTotalAmount()));
           return AccountBaseTransformer.transformModelToPayableStatementItemEntity(accountBase, payableStatementEntity.getPayableStatementId(), true);
@@ -89,12 +91,10 @@ public class R2dbcRunner implements CommandLineRunner {
 
     Flux<PayableStatementItemEntity> finalFlux = payableStatementItemEntityFlux
         .publishOn(Schedulers.boundedElastic())
-        //.limitRate(fetchSize)
+        .limitRate(fetchSize)
         .flatMap(payableStatementItemEntity -> generationService.savePayableStatementItem(payableStatementItemEntity));
 
-    finalFlux
-        .collectList()
-        .block();
+    finalFlux.collectList().block();
 
     payableStatementEntity.setTotalAmount(totalAmount.get());
     generationService.updatePayableStatement(payableStatementEntity).blockFirst();
